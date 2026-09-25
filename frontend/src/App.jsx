@@ -1,0 +1,26 @@
+import { useState } from "react";
+import Auth from "./pages/Auth";
+import MyTasks from "./pages/MyTasks";
+import ManagerDashboard from "./pages/ManagerDashboard";
+import "./index.css";
+
+function App() {
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem("user");
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const handleLogin = (userData) => setUser(userData);
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+  };
+
+  if (!user) return <Auth onLogin={handleLogin} />;
+
+  if (user.role === "EMPLOYEE") return <MyTasks user={user} onLogout={handleLogout} />;
+  return <ManagerDashboard user={user} onLogout={handleLogout} />;
+}
+
+export default App;
