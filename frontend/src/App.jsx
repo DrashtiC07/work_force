@@ -2,6 +2,7 @@ import { useState } from "react";
 import Auth from "./pages/Auth";
 import MyTasks from "./pages/MyTasks";
 import ManagerDashboard from "./pages/ManagerDashboard";
+import { authApi } from "./services/api";
 import "./index.css";
 
 function App() {
@@ -11,15 +12,21 @@ function App() {
   });
 
   const handleLogin = (userData) => setUser(userData);
-  const handleLogout = () => {
-    localStorage.removeItem("token");
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch (e) {
+      // even if the network call fails, still clear local state below
+    }
     localStorage.removeItem("user");
     setUser(null);
   };
 
   if (!user) return <Auth onLogin={handleLogin} />;
 
-  if (user.role === "EMPLOYEE") return <MyTasks user={user} onLogout={handleLogout} />;
+  if (user.role === "EMPLOYEE")
+    return <MyTasks user={user} onLogout={handleLogout} />;
   return <ManagerDashboard user={user} onLogout={handleLogout} />;
 }
 

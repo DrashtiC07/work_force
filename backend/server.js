@@ -10,14 +10,16 @@ const departmentRoutes = require("./routes/departments");
 const projectRoutes = require("./routes/projects");
 const taskRoutes = require("./routes/tasks");
 const authRoutes = require("./routes/auth");
-
+const cookieParser = require("cookie-parser");
+const { csrfProtection } = require("./middleware/csrf");
 const app = express();
 
 app.use(helmet());
 
 const allowedOrigins = [
-  "http://localhost:5173", 
+  "http://localhost:5173",
   "http://localhost:3000", // fallback
+  process.env.FRONTEND_URL,
 ];
 
 const corsOptions = {
@@ -29,12 +31,13 @@ const corsOptions = {
     }
     return callback(new Error("Not allowed by CORS"));
   },
+  credentials: true,
 };
 
 app.use(cors(corsOptions));
 
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
+  windowMs: 15 * 60 * 1000,
   max: 300,
   standardHeaders: true,
   legacyHeaders: false,
@@ -42,7 +45,7 @@ const generalLimiter = rateLimit({
 });
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
+  windowMs: 15 * 60 * 1000,
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
@@ -54,6 +57,8 @@ const authLimiter = rateLimit({
 app.use(generalLimiter);
 
 app.use(express.json());
+app.use(cookieParser());
+app.use(csrfProtection);
 app.use(logger);
 
 // health check app itself, not one resource

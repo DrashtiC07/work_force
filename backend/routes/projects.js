@@ -57,6 +57,15 @@ router.post(
   authorize("ADMIN", "MANAGER"),
   asyncHandler(async (req, res) => {
     const body = req.body || {};
+    if (
+      body.start_date &&
+      body.end_date &&
+      new Date(body.end_date) < new Date(body.start_date)
+    ) {
+      return res
+        .status(400)
+        .json({ message: "end_date cannot be before start_date" });
+    }
     if (body.status) body.status = String(body.status).toUpperCase();
     if (!body.name)
       return res.status(400).json({ message: "name is required" });
@@ -90,6 +99,15 @@ router.put(
   authorize("ADMIN", "MANAGER"),
   asyncHandler(async (req, res) => {
     const body = req.body || {};
+    if (
+      body.start_date &&
+      body.end_date &&
+      new Date(body.end_date) < new Date(body.start_date)
+    ) {
+      return res
+        .status(400)
+        .json({ message: "end_date cannot be before start_date" });
+    }
     if (body.status) body.status = String(body.status).toUpperCase();
     if (body.status && !VALID_STATUSES.includes(body.status))
       return res.status(400).json({
@@ -127,6 +145,7 @@ router.delete(
     const [result] = await db.query("DELETE FROM projects WHERE id = ?", [
       req.params.id,
     ]);
+
     if (!result.affectedRows)
       return res.status(404).json({ message: "Project not found" });
     res.json({ message: "Project deleted" });

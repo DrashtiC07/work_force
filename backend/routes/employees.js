@@ -25,12 +25,21 @@ const generateInviteCode = () => {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
 };
 
+// ADMIN sees everything. MANAGER never sees salary or invite codes.
+const sanitizeEmployee = (user, row) => {
+  if (user.role === "ADMIN") return row;
+  const { salary, invite_code, ...safe } = row;
+  return safe;
+};
+
 // ==========================================
 // GET /employees?search=
-// Get all employees / search employees
+// ADMIN + MANAGER only (managers need the list for the "Assign to" dropdown)
 // ==========================================
 router.get(
   "/",
+  protect,
+  authorize("ADMIN", "MANAGER"),
   asyncHandler(async (req, res) => {
     const search = `%${req.query.search || ""}%`;
 
@@ -45,16 +54,18 @@ router.get(
       [search, search, search],
     );
 
-    res.json(rows);
+    res.json(rows.map((r) => sanitizeEmployee(req.user, r)));
   }),
 );
 
 // ==========================================
 // GET /employees/:id
-// Get one employee
+// ADMIN + MANAGER only
 // ==========================================
 router.get(
   "/:id",
+  protect,
+  authorize("ADMIN", "MANAGER"),
   asyncHandler(async (req, res) => {
     const [rows] = await db.query(
       `SELECT e.*, d.name AS department
@@ -70,7 +81,7 @@ router.get(
       });
     }
 
-    res.json(rows[0]);
+    res.json(sanitizeEmployee(req.user, rows[0]));
   }),
 );
 
@@ -116,10 +127,7 @@ router.post(
 
 // ==========================================
 // PUT /employees/:id/regenerate-invite
-// ADMIN only — rotates an employee's invite code, e.g. if it was
-// lost or shared insecurely. Does NOT affect an already-linked
-// user account, since linking happens once at signup and is never
-// re-checked against invite_code afterwards.
+// ADMIN only — rotates an employee's invite code
 // ==========================================
 router.put(
   "/:id/regenerate-invite",
@@ -129,7 +137,6 @@ router.put(
     const newCode = generateInviteCode();
 
     try {
-      // Need name + email to send the notification — fetch before updating
       const [existing] = await db.query(
         "SELECT name, email FROM employees WHERE id = ?",
         [req.params.id],
@@ -153,8 +160,6 @@ router.put(
         invite_code: newCode,
       });
 
-      // Fire after responding, wrapped so an email failure never blocks
-      // the actual code update — same pattern as employee creation
       await sendInviteEmail(email, name, newCode);
     } catch (e) {
       fail(res, e);

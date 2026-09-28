@@ -6,8 +6,16 @@ const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const { fail } = require("../utils/dbHelpers");
 const { protect } = require("../middleware/auth");
-
+const { generateCsrfToken } = require("../middleware/csrf");
 const VALID_ROLES = ["ADMIN", "MANAGER", "EMPLOYEE"];
+const isProd = process.env.NODE_ENV === "production";
+
+const cookieOptions = {
+  httpOnly: true,
+  secure: isProd, // only over HTTPS in production; false is fine for localhost dev
+  sameSite: "lax",
+  maxAge: 8 * 60 * 60 * 1000, // 8 hours, matches JWT_EXPIRES_IN
+};
 
 // ==========================================
 // POST /auth/signup
@@ -93,9 +101,14 @@ router.post(
       { expiresIn: process.env.JWT_EXPIRES_IN || "8h" },
     );
 
+    const csrfToken = generateCsrfToken();
+
+    res.cookie("token", token, cookieOptions);
+    res.cookie("csrfToken", csrfToken, { ...cookieOptions, httpOnly: false }); // JS needs to read this one
+
     res.json({
       message: "Login successful",
-      token,
+      csrfToken, // also send in body so frontend can grab it immediately without a separate read
       user: {
         id: user.id,
         name: user.name,
@@ -106,6 +119,21 @@ router.post(
     });
   }),
 );
+
+// POST /auth/logout   — NEW route, clears both cookies
+router.post("/logout", protect, (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: "lax",
+  });
+  res.clearCookie("csrfToken", {
+    httpOnly: false,
+    secure: isProd,
+    sameSite: "lax",
+  });
+  res.json({ message: "Logged out" });
+});
 
 // ==========================================
 // GET /auth/me

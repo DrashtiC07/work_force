@@ -1,19 +1,29 @@
 const API = "http://localhost:8081";
 
-const authHeaders = () => {
-  const token = localStorage.getItem("token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+const getCsrfTokenFromCookie = () => {
+  const match = document.cookie.match(/(?:^|; )csrfToken=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
 };
 
 const request = async (path, options = {}) => {
+  const method = (options.method || "GET").toUpperCase();
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+
+  if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+    const csrfToken = getCsrfTokenFromCookie();
+    if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+  }
+
   const res = await fetch(`${API}${path}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-      ...(options.headers || {}),
-    },
+    method,
+    headers,
+    credentials: "include", // sends/receives the httpOnly token cookie + csrfToken cookie automatically
   });
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || "Request failed");
   return data;
@@ -27,6 +37,7 @@ export const authApi = {
     }),
   signup: (payload) =>
     request("/auth/signup", { method: "POST", body: JSON.stringify(payload) }),
+  logout: () => request("/auth/logout", { method: "POST" }),
   me: () => request("/auth/me"),
 };
 
