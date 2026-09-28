@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { tasksApi, projectsApi, employeesApi } from "../services/api";
 import Toast from "./Toast";
+import { statusOptionsFor, statusLabel } from "../utils/taskTransitions";
 
 const STATUSES = ["PENDING", "IN_PROGRESS", "DONE", "CANCELLED"];
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"];
@@ -170,6 +171,20 @@ function TasksPanel() {
     }
   };
 
+  /*
+   * TasksPanel is used by MANAGER/ADMIN.
+   * Therefore the manager transition rules are used here.
+   *
+   * Example:
+   * PENDING     -> PENDING, IN_PROGRESS, CANCELLED
+   * IN_PROGRESS -> IN_PROGRESS, DONE, PENDING, CANCELLED
+   * DONE        -> DONE, IN_PROGRESS
+   * CANCELLED   -> CANCELLED, PENDING
+   */
+  const editStatusOptions = editId
+    ? statusOptionsFor(form.status, "MANAGER")
+    : [];
+
   return (
     <>
       <Toast toast={toast} />
@@ -257,9 +272,9 @@ function TasksPanel() {
               <label>Status</label>
 
               <select name="status" value={form.status} onChange={change}>
-                {STATUSES.map((status) => (
+                {editStatusOptions.map((status) => (
                   <option key={status} value={status}>
-                    {status.replace("_", " ")}
+                    {statusLabel(status)}
                   </option>
                 ))}
               </select>
@@ -355,7 +370,7 @@ function TasksPanel() {
 
               {STATUSES.map((status) => (
                 <option key={status} value={status}>
-                  {status.replace("_", " ")}
+                  {statusLabel(status)}
                 </option>
               ))}
             </select>
@@ -423,9 +438,7 @@ function TasksPanel() {
 
                   {/* STATUS */}
                   <td>
-                    <span className="pill">
-                      {task.status.replace("_", " ")}
-                    </span>
+                    <span className="pill">{statusLabel(task.status)}</span>
                   </td>
 
                   {/* ACTIONS */}

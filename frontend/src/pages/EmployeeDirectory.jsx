@@ -13,7 +13,7 @@ const empty = {
   join_date: "",
 };
 
-function Dashboard({ user, onLogout, embedded = false }) {
+function EmployeeDirectory({ user, onLogout, embedded = false }) {
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [form, setForm] = useState(empty);
@@ -147,4 +147,4 @@ function Dashboard({ user, onLogout, embedded = false }) {
   );
 }
 
-export default Dashboard;
+export default EmployeeDirectory;

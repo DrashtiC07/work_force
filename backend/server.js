@@ -10,6 +10,7 @@ const departmentRoutes = require("./routes/departments");
 const projectRoutes = require("./routes/projects");
 const taskRoutes = require("./routes/tasks");
 const authRoutes = require("./routes/auth");
+const dashboardRoutes = require("./routes/dashboard");
 const cookieParser = require("cookie-parser");
 const { csrfProtection } = require("./middleware/csrf");
 const app = express();
@@ -38,7 +39,7 @@ app.use(cors(corsOptions));
 
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests, please try again later." },
@@ -83,6 +84,7 @@ app.use("/employees", employeeRoutes);
 app.use("/departments", departmentRoutes);
 app.use("/projects", projectRoutes);
 app.use("/tasks", taskRoutes);
+app.use("/dashboard", dashboardRoutes);
 app.use(errorHandler);
 
 const PORT = Number(process.env.PORT) || 8081;

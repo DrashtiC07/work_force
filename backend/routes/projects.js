@@ -99,15 +99,26 @@ router.put(
   authorize("ADMIN", "MANAGER"),
   asyncHandler(async (req, res) => {
     const body = req.body || {};
-    if (
-      body.start_date &&
-      body.end_date &&
-      new Date(body.end_date) < new Date(body.start_date)
-    ) {
+
+    // Compare the dates as they will be AFTER this update: whatever was sent,
+    // falling back to what is stored. Checking only when both were in the body
+    // let a partial update (e.g. just end_date) bypass the rule.
+    const [current] = await db.query(
+      "SELECT start_date, end_date FROM projects WHERE id = ?",
+      [req.params.id],
+    );
+    if (!current.length)
+      return res.status(404).json({ message: "Project not found" });
+
+    const start =
+      "start_date" in body ? body.start_date || null : current[0].start_date;
+    const end =
+      "end_date" in body ? body.end_date || null : current[0].end_date;
+    if (start && end && new Date(end) < new Date(start))
       return res
         .status(400)
         .json({ message: "end_date cannot be before start_date" });
-    }
+
     if (body.status) body.status = String(body.status).toUpperCase();
     if (body.status && !VALID_STATUSES.includes(body.status))
       return res.status(400).json({

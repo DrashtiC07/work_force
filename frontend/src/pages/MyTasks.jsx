@@ -1,20 +1,14 @@
 import { useEffect, useState } from "react";
 import { tasksApi } from "../services/api";
 import Toast from "../components/Toast";
-
-const STATUS_OPTIONS = ["PENDING", "IN_PROGRESS", "DONE", "CANCELLED"];
-
-const statusColor = {
-  PENDING: "muted",
-  IN_PROGRESS: "pill-active",
-  DONE: "pill-done",
-  CANCELLED: "pill-cancelled",
-};
+import MyStats from "../components/MyStats";
+import { statusOptionsFor, statusLabel } from "../utils/taskTransitions";
 
 function MyTasks({ user, onLogout }) {
   const [tasks, setTasks] = useState([]);
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [statsVersion, setStatsVersion] = useState(0);
 
   const showToast = (text, type) => {
     setToast({ text, type });
@@ -22,12 +16,10 @@ function MyTasks({ user, onLogout }) {
   };
 
   const load = async () => {
-      try {
-         console.log("MY TASKS USER:", user);
-         console.log("EMPLOYEE ID:", user.employee_id);
-      const data = await tasksApi.list({ assigned_to: user.employee_id });
-          setTasks(data);
-          console.log("MY TASKS DATA:", data);
+    try {
+      const params =
+        user.employee_id != null ? { assigned_to: user.employee_id } : {};
+      setTasks(await tasksApi.list(params));
     } catch (err) {
       showToast(err.message, "error");
     } finally {
@@ -43,10 +35,11 @@ function MyTasks({ user, onLogout }) {
     try {
       await tasksApi.update(taskId, { status: newStatus });
       showToast("Status updated", "ok");
-      load();
+      setStatsVersion((v) => v + 1); // refresh the stats strip too
     } catch (err) {
       showToast(err.message, "error");
     }
+    load();
   };
 
   return (
@@ -67,6 +60,8 @@ function MyTasks({ user, onLogout }) {
         </div>
       </div>
 
+      <MyStats refreshKey={statsVersion} />
+
       <div className="panel">
         {loading ? (
           <div className="empty">Loading…</div>
@@ -85,34 +80,42 @@ function MyTasks({ user, onLogout }) {
                 </tr>
               </thead>
               <tbody>
-                {tasks.map((t) => (
-                  <tr key={t.id}>
-                    <td>
-                      <div className="person-name">{t.title}</div>
-                      {t.description && (
-                        <div className="person-email">{t.description}</div>
-                      )}
-                    </td>
-                    <td className="muted">{t.project_name || "—"}</td>
-                    <td>
-                      <span className="pill">{t.priority}</span>
-                    </td>
-                    <td className="muted">{t.due_date || "—"}</td>
-                    <td>
-                      <select
-                        value={t.status}
-                        onChange={(e) => changeStatus(t.id, e.target.value)}
-                        className={statusColor[t.status] || ""}
-                      >
-                        {STATUS_OPTIONS.map((s) => (
-                          <option key={s} value={s}>
-                            {s.replace("_", " ")}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
+                {tasks.map((t) => {
+                  const options = statusOptionsFor(t.status, user.role);
+                  const locked = options.length === 1;
+
+                  return (
+                    <tr key={t.id}>
+                      <td>
+                        <div className="person-name">{t.title}</div>
+                        {t.description && (
+                          <div className="person-email">{t.description}</div>
+                        )}
+                      </td>
+                      <td className="muted">{t.project_name || "—"}</td>
+                      <td>
+                        <span className="pill">{t.priority}</span>
+                      </td>
+                      <td className="muted">{t.due_date || "—"}</td>
+                      <td>
+                        <select
+                          value={t.status}
+                          onChange={(e) => changeStatus(t.id, e.target.value)}
+                          disabled={locked}
+                          title={
+                            locked ? "Ask a manager to change this status" : ""
+                          }
+                        >
+                          {options.map((s) => (
+                            <option key={s} value={s}>
+                              {statusLabel(s)}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -5,6 +5,7 @@ const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const { makePicker, fail } = require("../utils/dbHelpers");
 const { sendInviteEmail } = require("../utils/mailer");
+const crypto = require("crypto");
 const FIELDS = [
   "name",
   "email",
@@ -21,8 +22,18 @@ const {
   validateEmployeeUpdate,
 } = require("../middleware/validateEmployee");
 
-const generateInviteCode = () => {
-  return Math.random().toString(36).slice(2, 8).toUpperCase();
+const generateInviteCode = () =>
+  crypto.randomBytes(5).toString("hex").toUpperCase(); // 10 chars
+
+// Email is best-effort and runs AFTER the response has already been sent.
+// If it threw into the route's catch block, fail(res, e) would try to send a
+// second response on a finished request. So failures are logged here instead.
+const sendInviteEmailSafe = async (email, name, code) => {
+  try {
+    await sendInviteEmail(email, name, code);
+  } catch (err) {
+    console.error(`Invite email to ${email} failed:`, err.message);
+  }
 };
 
 // ADMIN sees everything. MANAGER never sees salary or invite codes.
@@ -114,7 +125,7 @@ router.post(
         id: result.insertId,
         invite_code: req.body.invite_code,
       });
-      await sendInviteEmail(
+      await sendInviteEmailSafe(
         req.body.email,
         req.body.name,
         req.body.invite_code,
@@ -160,7 +171,7 @@ router.put(
         invite_code: newCode,
       });
 
-      await sendInviteEmail(email, name, newCode);
+      await sendInviteEmailSafe(email, name, newCode);
     } catch (e) {
       fail(res, e);
     }

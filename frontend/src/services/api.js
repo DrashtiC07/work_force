@@ -72,7 +72,7 @@ export const projectsApi = {
       body: JSON.stringify(payload),
     }),
   remove: (id) => request(`/projects/${id}`, { method: "DELETE" }),
-  progress: (id) => request(`/projects/${id}/progress`),
+  // progress: (id) => request(`/projects/${id}/progress`),
 };
 
 export const tasksApi = {
@@ -85,4 +85,8 @@ export const tasksApi = {
   update: (id, payload) =>
     request(`/tasks/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   remove: (id) => request(`/tasks/${id}`, { method: "DELETE" }),
+};
+export const dashboardApi = {
+  overview: () => request("/dashboard/overview"),
+  my: () => request("/dashboard/my"),
 };
